@@ -1,0 +1,95 @@
+import win32com.client as win32
+import os
+import fnmatch
+import time
+from collections import defaultdict  
+
+hwp= win32.gencache.EnsureDispatch("HWPFrame.HwpObject")
+hwp.RegisterModule('FilePathCheckDLL','SecurityModule')
+
+dir1=os.getcwd()
+filename=fnmatch.filter(os.listdir(dir1),'*.hwp')
+print(filename)
+
+excel = win32.gencache.EnsureDispatch("Excel.Application")
+wb = excel.Workbooks.Open("//nas1.krihs.re.kr/profile/20220040/Desktop/sample4/정리_.xlsx")
+ws = wb.Worksheets(1)
+excel.Visible = True
+
+p=1
+
+for file in filename:
+
+     # 답변 기록할 사전 생성
+    answer_dict = defaultdict(list)
+    
+    hwp.Open(os.path.join(dir1, file))
+        
+    # 라디오버튼값 추가
+    doc = hwp.XHwpDocuments.Item(0)
+    
+    for i in range(doc.XHwpFormRadioButtons.Count):
+        item = doc.XHwpFormRadioButtons.Item(i)
+        if item.Value:
+            answer_dict[item.RadioGroupName] = item.Caption
+            
+    # 텍스트 추가
+    for i in range(doc.XHwpFormEdits.Count):
+        item = doc.XHwpFormEdits.Item(i)
+        answer_dict[item.GroupName] = item.Text
+        
+    # 체크리스트값 추가
+    for i in range(doc.XHwpFormCheckButtons.Count):
+        item = doc.XHwpFormCheckButtons.Item(i)
+        if item.GroupName not in answer_dict.keys() and item.Value:
+            answer_dict[item.GroupName] = [item.Caption]
+        elif item.GroupName in answer_dict.keys() and item.Value:
+            answer_dict[item.GroupName].append(item.Caption)
+            
+    # 누름틀값 추가    
+        doc1 = hwp.GetFieldList().split("")   
+    
+    for g in range(len(doc1)):
+        txt = hwp.GetFieldText(doc1[g])
+        answer_dict[doc1[g]] = txt
+    
+    ws.Range(ws.Cells(p+1,1), ws.Cells(p+1,34)).Value = (
+        answer_dict["사업명"],
+        answer_dict["기관명"],
+        answer_dict["부서명"],
+        answer_dict["작성자명"],
+        answer_dict["전화"],
+        answer_dict["이메일"],
+        answer_dict["사업분류"],
+        answer_dict["startdate"],
+        answer_dict["enddate"],
+        answer_dict["전략"],
+        ", ".join(answer_dict["type"]),
+        ", ".join(answer_dict["tec"]),
+        answer_dict["elsetec"],
+        answer_dict["total1"],
+        answer_dict["total1a"],
+        answer_dict["total1b"],
+        answer_dict["total1c"],
+        answer_dict["total2"],
+        answer_dict["total2a"],
+        answer_dict["total2b"],
+        answer_dict["total2c"],        
+        answer_dict["중복성"],
+        answer_dict["사업주요내용"],
+        answer_dict["사업주요목적"],
+        answer_dict["대상"],
+        answer_dict["규모"],
+        answer_dict["목표달성정도"],
+        answer_dict["활용효과"],
+        answer_dict["사업연계"],
+        answer_dict["중복성반영내용"],
+        answer_dict["부진내용및사유"],
+        answer_dict["보안개선검토사항"],
+        answer_dict["제도개선검토사항"],
+        filename[p-1]
+    )
+    p=p+1
+
+
+hwp.Quit()
